@@ -1,6 +1,6 @@
 import type { PaymentMethod, Priority, ReminderType, TaskStatus } from '@/types'
 
-export const HOME_ID = import.meta.env.VITE_HOME_ID || 'familia'
+export const HOME_ID = (import.meta.env.VITE_HOME_ID as string | undefined) || 'familia'
 
 export const SHOPPING_CATEGORIES = [
   'Supermercado',

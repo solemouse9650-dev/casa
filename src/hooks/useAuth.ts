@@ -5,7 +5,7 @@ import {
   signOut,
   sendPasswordResetEmail,
 } from 'firebase/auth'
-import { auth } from '@/firebase/config'
+import { auth, firebaseReady } from '@/firebase/config'
 import { useAuthStore } from '@/stores/authStore'
 import { upsertUserProfile } from '@/services/users'
 import { ensureHomeExists } from '@/services/home'
@@ -17,6 +17,11 @@ export function useAuthListener() {
 
   useEffect(() => {
     let cancelled = false
+
+    if (!firebaseReady || !auth) {
+      setLoading(false)
+      return
+    }
 
     // Evita quedar colgado en "Verificando sesión…"
     const timeout = window.setTimeout(() => {
