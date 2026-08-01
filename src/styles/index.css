@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+
+  --color-surface: #f7f4ef;
+  --color-surface-elevated: #ffffff;
+  --color-ink: #1c2421;
+  --color-ink-muted: #5c6b66;
+  --color-border: #e4ddd3;
+  --color-accent: #1b7a6e;
+  --color-accent-soft: #d8efe9;
+  --color-accent-strong: #145e55;
+  --color-warm: #c96b3c;
+  --color-warm-soft: #f6e5da;
+  --color-danger: #c23b3b;
+  --color-warning: #d4a017;
+  --color-success: #2f8f5b;
+
+  --shadow-soft: 0 1px 2px rgb(28 36 33 / 0.04), 0 8px 24px rgb(28 36 33 / 0.06);
+  --shadow-lift: 0 4px 12px rgb(28 36 33 / 0.08), 0 16px 40px rgb(28 36 33 / 0.08);
+}
+
+.dark {
+  --color-surface: #121816;
+  --color-surface-elevated: #1a221f;
+  --color-ink: #eef3f0;
+  --color-ink-muted: #9aada5;
+  --color-border: #2a3531;
+  --color-accent: #3cb8a6;
+  --color-accent-soft: #1a3a34;
+  --color-accent-strong: #6fd4c4;
+  --color-warm: #e08a5a;
+  --color-warm-soft: #3a2a22;
+  --color-danger: #e06a6a;
+  --color-warning: #e0b84a;
+  --color-success: #5cbc84;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgb(27 122 110 / 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgb(201 107 60 / 0.08), transparent 50%),
+    linear-gradient(180deg, var(--color-surface), var(--color-surface));
+}
+
+.dark body::before {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgb(60 184 166 / 0.1), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgb(224 138 90 / 0.06), transparent 50%),
+    linear-gradient(180deg, var(--color-surface), var(--color-surface));
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-ink-muted) 35%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}
