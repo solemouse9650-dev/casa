@@ -23,6 +23,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { useDataStore } from '@/stores/dataStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useHomeData } from '@/hooks/useHomeData'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useTheme } from '@/hooks/useTheme'
 import { NotificationsPanel } from '@/components/NotificationsPanel'
 import { GlobalSearch } from '@/components/GlobalSearch'
@@ -48,6 +49,7 @@ const icons = {
 export function AppShell() {
   useHomeData()
   useTheme()
+  usePushNotifications()
   const { t } = useI18n()
   const { profile } = useAuth()
   const navigate = useNavigate()

@@ -26,6 +26,20 @@ npm run dev
 
 Los usuarios se crean manualmente en Firebase Authentication. No hay registro público.
 
+## Chat y notificaciones push
+
+- Chat **Familiar** (todos) o **privado** con cada persona.
+- Solo texto (sin audios ni imágenes).
+- En el chat: botón **Activar notificaciones**.
+
+Para push al celular (con sesión iniciada):
+
+1. Firebase Console → Project settings → Cloud Messaging → **Web Push certificates** → generar pares de claves → copiar la clave pública a `VITE_FIREBASE_VAPID_KEY` (Vercel + `.env`).
+2. En Vercel → Environment Variables → `FCM_SERVER_KEY` = Server key de Cloud Messaging (o Cloud Messaging API).
+3. Redeploy.
+
+Aunque falte FCM, con la app abierta/en segundo plano el navegador puede mostrar notificaciones locales si diste permiso.
+
 ## Firebase (obligatorio para que guarde datos)
 
 Si la app no guarda compras/tareas, casi seguro faltan las **reglas** o la base Firestore.

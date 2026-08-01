@@ -139,14 +139,25 @@ export interface ExpenseItem {
   createdAt: string
 }
 
-export type ChatMessageType = 'text' | 'audio'
+export type ChatType = 'family' | 'dm'
+
+export interface ChatThread {
+  id: string
+  type: ChatType
+  memberIds: string[]
+  title: string
+  lastText?: string
+  lastAt?: string
+  lastBy?: string
+  lastByName?: string
+  updatedAt: string
+}
 
 export interface ChatMessage {
   id: string
-  type: ChatMessageType
-  text?: string
-  audioUrl?: string
-  audioDuration?: number
+  chatId: string
+  type: 'text'
+  text: string
   createdBy: string
   createdByName: string
   createdAt: string
