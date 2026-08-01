@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
 import { useAuth } from '@/hooks/useAuth'
 import { useI18n } from '@/hooks/useI18n'
-import { useDataStore } from '@/stores/dataStore'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { StatCard, Card } from '@/components/ui/Card'
 import { PriorityBadge } from '@/components/ui/Badge'
 import { formatRelative } from '@/utils/dates'
@@ -13,9 +13,7 @@ import type { TranslationKey } from '@/i18n/translations'
 export function DashboardPage() {
   const { profile } = useAuth()
   const { t, locale } = useI18n()
-  const shopping = useDataStore((s) => s.shopping)
-  const tasks = useDataStore((s) => s.tasks)
-  const activity = useDataStore((s) => s.activity)
+  const { shopping, tasks, activity } = useVisibleData()
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {

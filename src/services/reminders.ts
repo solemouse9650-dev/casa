@@ -9,8 +9,9 @@ import {
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
 import { notifyAndLog } from './activity'
-import type { ReminderItem, ReminderStatus, ReminderType } from '@/types'
+import type { ReminderItem, ReminderStatus, ReminderType, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { logActivity } from './activity'
 
 export type ReminderInput = {
   message: string
@@ -18,32 +19,60 @@ export type ReminderInput = {
   time: string
   type: ReminderType
   status?: ReminderStatus
+  visibility?: Visibility
 }
 
 export function subscribeReminders(cb: (items: ReminderItem[]) => void): Unsubscribe {
   const q = query(homeCol('reminders'), orderBy('date', 'asc'))
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ReminderItem, 'id'>) })))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Omit<ReminderItem, 'id'>
+          return {
+            id: d.id,
+            ...data,
+            visibility: data.visibility === 'private' ? 'private' : 'family',
+          }
+        }),
+      )
+    },
+    (error) => console.error('[Casa] reminders snapshot error', error),
+  )
 }
 
 export async function createReminder(input: ReminderInput, actor: { id: string; name: string }) {
+  const visibility = input.visibility === 'private' ? 'private' : 'family'
   const ref = await addDoc(homeCol('reminders'), {
     ...input,
+    visibility,
     status: input.status ?? 'pending',
     createdBy: actor.id,
     createdByName: actor.name,
     createdAt: nowIso(),
   })
-  await notifyAndLog({
-    actorId: actor.id,
-    actorName: actor.name,
-    action: 'create',
-    entityType: 'reminder',
-    entityId: ref.id,
-    message: `${actor.name} creó un recordatorio: ${input.message}`,
-    notificationTitle: 'Recordatorio',
-  })
+  const message = `${actor.name} creó un recordatorio: ${input.message}`
+  if (visibility === 'family') {
+    await notifyAndLog({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: 'create',
+      entityType: 'reminder',
+      entityId: ref.id,
+      message,
+      notificationTitle: 'Recordatorio',
+    })
+  } else {
+    await logActivity({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: 'create',
+      entityType: 'reminder',
+      entityId: ref.id,
+      message,
+    })
+  }
   return ref.id
 }
 

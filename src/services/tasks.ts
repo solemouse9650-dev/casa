@@ -9,8 +9,9 @@ import {
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
 import { notifyAndLog } from './activity'
-import type { Attachment, Priority, Recurrence, TaskItem, TaskStatus } from '@/types'
+import type { Attachment, Priority, Recurrence, TaskItem, TaskStatus, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { logActivity } from './activity'
 
 export type TaskInput = {
   title: string
@@ -25,23 +26,35 @@ export type TaskInput = {
   notes?: string
   attachments?: Attachment[]
   recurrence?: Recurrence
+  visibility?: Visibility
 }
 
 export function subscribeTasks(cb: (items: TaskItem[]) => void): Unsubscribe {
   const q = query(homeCol('tasks'), orderBy('createdAt', 'desc'))
-  return onSnapshot(q, (snap) => {
-    cb(
-      snap.docs.map((d) => {
-        const data = d.data() as Omit<TaskItem, 'id'>
-        return { id: d.id, ...data, attachments: data.attachments ?? [] }
-      }),
-    )
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Omit<TaskItem, 'id'>
+          return {
+            id: d.id,
+            ...data,
+            attachments: data.attachments ?? [],
+            visibility: data.visibility === 'private' ? 'private' : 'family',
+          }
+        }),
+      )
+    },
+    (error) => console.error('[Casa] tasks snapshot error', error),
+  )
 }
 
 export async function createTask(input: TaskInput, actor: { id: string; name: string }) {
+  const visibility = input.visibility === 'private' ? 'private' : 'family'
   const payload = {
     ...input,
+    visibility,
     status: input.status ?? 'pending',
     attachments: input.attachments ?? [],
     recurrence: input.recurrence ?? 'none',
@@ -50,15 +63,28 @@ export async function createTask(input: TaskInput, actor: { id: string; name: st
     createdAt: nowIso(),
   }
   const ref = await addDoc(homeCol('tasks'), payload)
-  await notifyAndLog({
-    actorId: actor.id,
-    actorName: actor.name,
-    action: 'create',
-    entityType: 'task',
-    entityId: ref.id,
-    message: `${actor.name} creó la tarea "${input.title}".`,
-    notificationTitle: 'Nueva tarea',
-  })
+  const assigneeText = input.assigneeName ? ` para ${input.assigneeName}` : ''
+  const message = `${actor.name} creó la tarea "${input.title}"${assigneeText}.`
+  if (visibility === 'family') {
+    await notifyAndLog({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: 'create',
+      entityType: 'task',
+      entityId: ref.id,
+      message,
+      notificationTitle: 'Nueva tarea',
+    })
+  } else {
+    await logActivity({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: 'create',
+      entityType: 'task',
+      entityId: ref.id,
+      message,
+    })
+  }
   return ref.id
 }
 
@@ -86,6 +112,7 @@ export async function duplicateTask(item: TaskItem, actor: { id: string; name: s
       description: item.description,
       category: item.category,
       priority: item.priority,
+      visibility: item.visibility ?? 'family',
       assigneeId: item.assigneeId,
       assigneeName: item.assigneeName,
       dueDate: item.dueDate,

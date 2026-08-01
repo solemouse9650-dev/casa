@@ -9,8 +9,9 @@ import {
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
 import { notifyAndLog } from './activity'
-import type { Priority, ShoppingItem, ShoppingStatus } from '@/types'
+import type { Priority, ShoppingItem, ShoppingStatus, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { logActivity } from './activity'
 
 export type ShoppingInput = {
   name: string
@@ -24,36 +25,64 @@ export type ShoppingInput = {
   imageUrl?: string
   scheduledFor?: string
   status?: ShoppingStatus
+  visibility?: Visibility
 }
 
 export function subscribeShopping(cb: (items: ShoppingItem[]) => void): Unsubscribe {
   const q = query(homeCol('shopping'), orderBy('createdAt', 'desc'))
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ShoppingItem, 'id'>) })))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Omit<ShoppingItem, 'id'>
+          return {
+            id: d.id,
+            ...data,
+            visibility: data.visibility === 'private' ? 'private' : 'family',
+          }
+        }),
+      )
+    },
+    (error) => console.error('[Casa] shopping snapshot error', error),
+  )
 }
 
 export async function createShopping(
   input: ShoppingInput,
   actor: { id: string; name: string },
 ) {
+  const visibility = input.visibility === 'private' ? 'private' : 'family'
   const payload = {
     ...input,
+    visibility,
     status: input.status ?? 'pending',
     createdBy: actor.id,
     createdByName: actor.name,
     createdAt: nowIso(),
   }
   const ref = await addDoc(homeCol('shopping'), payload)
-  await notifyAndLog({
-    actorId: actor.id,
-    actorName: actor.name,
-    action: 'create',
-    entityType: 'shopping',
-    entityId: ref.id,
-    message: `${actor.name} agregó ${input.name}.`,
-    notificationTitle: 'Compra agregada',
-  })
+  const message = `${actor.name} agregó ${input.name}.`
+  if (visibility === 'family') {
+    await notifyAndLog({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: 'create',
+      entityType: 'shopping',
+      entityId: ref.id,
+      message,
+      notificationTitle: 'Compra agregada',
+    })
+  } else {
+    await logActivity({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: 'create',
+      entityType: 'shopping',
+      entityId: ref.id,
+      message: `${actor.name} agregó una compra privada: ${input.name}.`,
+    })
+  }
   return ref.id
 }
 
@@ -86,6 +115,7 @@ export async function duplicateShopping(item: ShoppingItem, actor: { id: string;
       estimatedPrice: item.estimatedPrice,
       scheduledFor: item.scheduledFor,
       imageUrl: item.imageUrl,
+      visibility: item.visibility ?? 'family',
     },
     actor,
   )

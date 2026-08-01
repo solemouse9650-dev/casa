@@ -7,6 +7,8 @@ export type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly'
 export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'other'
 export type Locale = 'es' | 'en'
 export type ThemeMode = 'light' | 'dark'
+/** family = toda la casa; private = solo el creador (y assignee en tareas) */
+export type Visibility = 'family' | 'private'
 
 export interface UserProfile {
   uid: string
@@ -36,6 +38,7 @@ export interface ShoppingItem {
   finalPrice?: number
   status: ShoppingStatus
   imageUrl?: string
+  visibility: Visibility
   createdBy: string
   createdByName: string
   purchasedBy?: string
@@ -59,6 +62,7 @@ export interface TaskItem {
   notes?: string
   attachments: Attachment[]
   recurrence: Recurrence
+  visibility: Visibility
   createdBy: string
   createdByName: string
   completedBy?: string
@@ -75,6 +79,7 @@ export interface CalendarEvent {
   time?: string
   endTime?: string
   color?: string
+  visibility: Visibility
   createdBy: string
   createdByName: string
   createdAt: string
@@ -87,6 +92,7 @@ export interface ReminderItem {
   time: string
   type: ReminderType
   status: ReminderStatus
+  visibility: Visibility
   createdBy: string
   createdByName: string
   createdAt: string
@@ -98,6 +104,7 @@ export interface NoteItem {
   content: string
   color: string
   category: string
+  visibility: Visibility
   createdBy: string
   createdByName: string
   createdAt: string

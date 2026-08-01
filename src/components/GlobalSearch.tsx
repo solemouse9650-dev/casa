@@ -3,8 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { useUiStore } from '@/stores/uiStore'
-import { useDataStore } from '@/stores/dataStore'
 import { useI18n } from '@/hooks/useI18n'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { matchesQuery } from '@/utils/search'
 import { Input } from '@/components/ui/Input'
 
@@ -14,11 +14,7 @@ export function GlobalSearch() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const shopping = useDataStore((s) => s.shopping)
-  const tasks = useDataStore((s) => s.tasks)
-  const notes = useDataStore((s) => s.notes)
-  const events = useDataStore((s) => s.events)
-  const inventory = useDataStore((s) => s.inventory)
+  const { shopping, tasks, notes, events, inventory } = useVisibleData()
 
   const results = useMemo(() => {
     if (!query.trim()) return []

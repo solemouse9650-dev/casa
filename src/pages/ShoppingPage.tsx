@@ -21,8 +21,9 @@ import { Card } from '@/components/ui/Card'
 import { PriorityBadge } from '@/components/ui/Badge'
 import { useI18n } from '@/hooks/useI18n'
 import { useActor } from '@/hooks/useAuth'
-import { useDataStore } from '@/stores/dataStore'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { PRIORITIES, SHOPPING_CATEGORIES, UNITS } from '@/constants'
+import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
 import {
   createShopping,
   deleteShopping,
@@ -48,6 +49,7 @@ const schema = z.object({
   estimatedPrice: z.coerce.number().optional(),
   finalPrice: z.coerce.number().optional(),
   scheduledFor: z.string().optional(),
+  visibility: z.enum(['family', 'private']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -55,7 +57,7 @@ type FormData = z.infer<typeof schema>
 export function ShoppingPage() {
   const { t, locale } = useI18n()
   const actor = useActor()
-  const shopping = useDataStore((s) => s.shopping)
+  const { shopping } = useVisibleData()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState<'all' | 'pending' | 'purchased'>('pending')
@@ -75,6 +77,7 @@ export function ShoppingPage() {
       unit: 'u',
       priority: 'medium',
       notes: '',
+      visibility: 'family',
     },
   })
 
@@ -111,6 +114,7 @@ export function ShoppingPage() {
       estimatedPrice: undefined,
       finalPrice: undefined,
       scheduledFor: '',
+      visibility: 'family',
     })
     setOpen(true)
   }
@@ -128,27 +132,34 @@ export function ShoppingPage() {
       estimatedPrice: item.estimatedPrice,
       finalPrice: item.finalPrice,
       scheduledFor: item.scheduledFor ?? '',
+      visibility: item.visibility ?? 'family',
     })
     setOpen(true)
     setMenuId(null)
   }
 
   const onSubmit = form.handleSubmit(async (data) => {
-    let imageUrl = editing?.imageUrl
-    if (imageFile) {
-      imageUrl = await uploadHomeFile(`shopping/${Date.now()}-${imageFile.name}`, imageFile)
+    try {
+      let imageUrl = editing?.imageUrl
+      if (imageFile) {
+        imageUrl = await uploadHomeFile(`shopping/${Date.now()}-${imageFile.name}`, imageFile)
+      }
+      const payload = {
+        ...data,
+        visibility: data.visibility,
+        notes: data.notes || undefined,
+        estimatedPrice: data.estimatedPrice || undefined,
+        finalPrice: data.finalPrice || undefined,
+        scheduledFor: data.scheduledFor || undefined,
+        imageUrl,
+      }
+      if (editing) await updateShopping(editing.id, payload)
+      else await createShopping(payload, actor)
+      setOpen(false)
+    } catch (error) {
+      console.error(error)
+      window.alert('No se pudo guardar en la base de datos. Revisá la conexión o las reglas de Firestore.')
     }
-    const payload = {
-      ...data,
-      notes: data.notes || undefined,
-      estimatedPrice: data.estimatedPrice || undefined,
-      finalPrice: data.finalPrice || undefined,
-      scheduledFor: data.scheduledFor || undefined,
-      imageUrl,
-    }
-    if (editing) await updateShopping(editing.id, payload)
-    else await createShopping(payload, actor)
-    setOpen(false)
   })
 
   return (
@@ -239,6 +250,7 @@ export function ShoppingPage() {
                       priority={item.priority}
                       label={t(`priority.${item.priority}` as TranslationKey)}
                     />
+                    <VisibilityBadge visibility={item.visibility} />
                   </div>
                   <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
                     {item.quantity} {item.unit} · {item.category}
@@ -353,6 +365,7 @@ export function ShoppingPage() {
           <Field label={t('shopping.scheduled')}>
             <Input type="date" {...form.register('scheduledFor')} />
           </Field>
+          <VisibilityField register={form.register} />
           <Field label={t('shopping.estimated')}>
             <Input type="number" step="any" {...form.register('estimatedPrice')} />
           </Field>

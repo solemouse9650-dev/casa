@@ -12,8 +12,9 @@ import { Card } from '@/components/ui/Card'
 import { PriorityBadge, Badge } from '@/components/ui/Badge'
 import { useI18n } from '@/hooks/useI18n'
 import { useActor } from '@/hooks/useAuth'
-import { useDataStore } from '@/stores/dataStore'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { PRIORITIES, TASK_CATEGORIES, TASK_STATUSES } from '@/constants'
+import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
 import {
   completeTask,
   createTask,
@@ -38,6 +39,7 @@ const schema = z.object({
   status: z.enum(['pending', 'in_progress', 'done', 'cancelled']),
   notes: z.string().optional(),
   recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']),
+  visibility: z.enum(['family', 'private']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -45,8 +47,7 @@ type FormData = z.infer<typeof schema>
 export function TasksPage() {
   const { t, locale } = useI18n()
   const actor = useActor()
-  const tasks = useDataStore((s) => s.tasks)
-  const users = useDataStore((s) => s.users)
+  const { tasks, users } = useVisibleData()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState<'all' | TaskStatus>('all')
@@ -63,6 +64,8 @@ export function TasksPage() {
       priority: 'medium',
       status: 'pending',
       recurrence: 'none',
+      visibility: 'family',
+      assigneeId: '',
     },
   })
 
@@ -90,12 +93,13 @@ export function TasksPage() {
       description: '',
       category: 'Limpieza',
       priority: 'medium',
-      assigneeId: '',
+      assigneeId: actor.id,
       dueDate: '',
       dueTime: '',
       status: 'pending',
       notes: '',
       recurrence: 'none',
+      visibility: 'family',
     })
     setOpen(true)
   }
@@ -113,29 +117,36 @@ export function TasksPage() {
       status: item.status,
       notes: item.notes ?? '',
       recurrence: item.recurrence ?? 'none',
+      visibility: item.visibility ?? 'family',
     })
     setOpen(true)
     setMenuId(null)
   }
 
   const onSubmit = form.handleSubmit(async (data) => {
-    const assignee = users.find((u) => u.uid === data.assigneeId)
-    const payload = {
-      title: data.title,
-      description: data.description || undefined,
-      category: data.category,
-      priority: data.priority,
-      assigneeId: data.assigneeId || undefined,
-      assigneeName: assignee?.displayName,
-      dueDate: data.dueDate || undefined,
-      dueTime: data.dueTime || undefined,
-      status: data.status,
-      notes: data.notes || undefined,
-      recurrence: data.recurrence,
+    try {
+      const assignee = users.find((u) => u.uid === data.assigneeId)
+      const payload = {
+        title: data.title,
+        description: data.description || undefined,
+        category: data.category,
+        priority: data.priority,
+        assigneeId: data.assigneeId || undefined,
+        assigneeName: assignee?.displayName,
+        dueDate: data.dueDate || undefined,
+        dueTime: data.dueTime || undefined,
+        status: data.status,
+        notes: data.notes || undefined,
+        recurrence: data.recurrence,
+        visibility: data.visibility,
+      }
+      if (editing) await updateTask(editing.id, payload)
+      else await createTask(payload, actor)
+      setOpen(false)
+    } catch (error) {
+      console.error(error)
+      window.alert('No se pudo guardar la tarea en Firestore.')
     }
-    if (editing) await updateTask(editing.id, payload)
-    else await createTask(payload, actor)
-    setOpen(false)
   })
 
   return (
@@ -220,6 +231,7 @@ export function TasksPage() {
                     <Badge className="bg-[var(--color-border)] text-[var(--color-ink-muted)]">
                       {t(`status.${task.status}` as TranslationKey)}
                     </Badge>
+                    <VisibilityBadge visibility={task.visibility} />
                   </div>
                   <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
                     {task.category}
@@ -323,10 +335,12 @@ export function TasksPage() {
               {users.map((u) => (
                 <option key={u.uid} value={u.uid}>
                   {u.displayName}
+                  {u.uid === actor.id ? ' (yo)' : ''}
                 </option>
               ))}
             </Select>
           </Field>
+          <VisibilityField register={form.register} />
           <Field label="Estado">
             <Select {...form.register('status')}>
               {TASK_STATUSES.map((s) => (

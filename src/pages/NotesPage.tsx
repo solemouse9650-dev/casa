@@ -10,8 +10,9 @@ import { Modal } from '@/components/ui/Modal'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { useI18n } from '@/hooks/useI18n'
 import { useActor } from '@/hooks/useAuth'
-import { useDataStore } from '@/stores/dataStore'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { NOTE_CATEGORIES, NOTE_COLORS } from '@/constants'
+import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
 import { createNote, deleteNote, updateNote } from '@/services/notes'
 import type { NoteItem } from '@/types'
 import { formatRelative } from '@/utils/dates'
@@ -21,6 +22,7 @@ const schema = z.object({
   content: z.string().min(1),
   category: z.string().min(1),
   color: z.string().min(1),
+  visibility: z.enum(['family', 'private']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -28,7 +30,7 @@ type FormData = z.infer<typeof schema>
 export function NotesPage() {
   const { t, locale } = useI18n()
   const actor = useActor()
-  const notes = useDataStore((s) => s.notes)
+  const { notes } = useVisibleData()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<NoteItem | null>(null)
   const form = useForm<FormData>({
@@ -38,12 +40,19 @@ export function NotesPage() {
       content: '',
       category: 'Importante',
       color: NOTE_COLORS[0],
+      visibility: 'family',
     },
   })
 
   const openCreate = () => {
     setEditing(null)
-    form.reset({ title: '', content: '', category: 'Importante', color: NOTE_COLORS[0] })
+    form.reset({
+      title: '',
+      content: '',
+      category: 'Importante',
+      color: NOTE_COLORS[0],
+      visibility: 'family',
+    })
     setOpen(true)
   }
 
@@ -54,14 +63,20 @@ export function NotesPage() {
       content: note.content,
       category: note.category,
       color: note.color,
+      visibility: note.visibility ?? 'family',
     })
     setOpen(true)
   }
 
   const onSubmit = form.handleSubmit(async (data) => {
-    if (editing) await updateNote(editing.id, data)
-    else await createNote(data, actor)
-    setOpen(false)
+    try {
+      if (editing) await updateNote(editing.id, data)
+      else await createNote(data, actor)
+      setOpen(false)
+    } catch (error) {
+      console.error(error)
+      window.alert('No se pudo guardar la nota en Firestore.')
+    }
   })
 
   return (
@@ -101,7 +116,10 @@ export function NotesPage() {
                   <p className="font-[family-name:var(--font-display)] text-lg font-semibold text-[#1c2421]">
                     {note.title}
                   </p>
-                  <p className="mt-1 text-xs text-[#5c6b66]">{note.category}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-xs text-[#5c6b66]">{note.category}</p>
+                    <VisibilityBadge visibility={note.visibility} />
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -141,6 +159,7 @@ export function NotesPage() {
               ))}
             </Select>
           </Field>
+          <VisibilityField register={form.register} />
           <Field label="Color">
             <div className="flex flex-wrap gap-2">
               {NOTE_COLORS.map((color) => (

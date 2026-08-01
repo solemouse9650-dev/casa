@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
 import { logActivity } from './activity'
-import type { CalendarEvent } from '@/types'
+import type { CalendarEvent, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
 
 export type EventInput = {
@@ -19,18 +19,34 @@ export type EventInput = {
   time?: string
   endTime?: string
   color?: string
+  visibility?: Visibility
 }
 
 export function subscribeEvents(cb: (items: CalendarEvent[]) => void): Unsubscribe {
   const q = query(homeCol('events'), orderBy('date', 'asc'))
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CalendarEvent, 'id'>) })))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Omit<CalendarEvent, 'id'>
+          return {
+            id: d.id,
+            ...data,
+            visibility: data.visibility === 'private' ? 'private' : 'family',
+          }
+        }),
+      )
+    },
+    (error) => console.error('[Casa] events snapshot error', error),
+  )
 }
 
 export async function createEvent(input: EventInput, actor: { id: string; name: string }) {
+  const visibility = input.visibility === 'private' ? 'private' : 'family'
   const ref = await addDoc(homeCol('events'), {
     ...input,
+    visibility,
     color: input.color ?? '#1b7a6e',
     createdBy: actor.id,
     createdByName: actor.name,

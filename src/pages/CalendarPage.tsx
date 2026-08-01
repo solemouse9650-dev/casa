@@ -23,15 +23,17 @@ import { Modal } from '@/components/ui/Modal'
 import { Field, Input, Textarea } from '@/components/ui/Input'
 import { useI18n } from '@/hooks/useI18n'
 import { useActor } from '@/hooks/useAuth'
-import { useDataStore } from '@/stores/dataStore'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { createEvent } from '@/services/events'
 import { cn } from '@/utils/cn'
+import { VisibilityField } from '@/components/ui/VisibilityField'
 
 const schema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   date: z.string().min(1),
   time: z.string().optional(),
+  visibility: z.enum(['family', 'private']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -47,10 +49,12 @@ type DayItem = {
 export function CalendarPage() {
   const { t, locale } = useI18n()
   const actor = useActor()
-  const tasks = useDataStore((s) => s.tasks)
-  const shopping = useDataStore((s) => s.shopping)
-  const events = useDataStore((s) => s.events)
-  const reminders = useDataStore((s) => s.reminders)
+  const {
+    calendarTasks: tasks,
+    calendarShopping: shopping,
+    calendarEvents: events,
+    calendarReminders: reminders,
+  } = useVisibleData()
   const [month, setMonth] = useState(new Date())
   const [selected, setSelected] = useState<Date>(new Date())
   const [detailOpen, setDetailOpen] = useState(false)
@@ -59,7 +63,12 @@ export function CalendarPage() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { title: '', description: '', date: format(new Date(), 'yyyy-MM-dd') },
+    defaultValues: {
+      title: '',
+      description: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
+      visibility: 'family',
+    },
   })
 
   const days = useMemo(() => {
@@ -119,16 +128,22 @@ export function CalendarPage() {
   const selectedItems = itemsByDay.get(selectedKey) ?? []
 
   const onCreate = form.handleSubmit(async (data) => {
-    await createEvent(
-      {
-        title: data.title,
-        description: data.description,
-        date: data.date,
-        time: data.time || undefined,
-      },
-      actor,
-    )
-    setCreateOpen(false)
+    try {
+      await createEvent(
+        {
+          title: data.title,
+          description: data.description,
+          date: data.date,
+          time: data.time || undefined,
+          visibility: data.visibility,
+        },
+        actor,
+      )
+      setCreateOpen(false)
+    } catch (error) {
+      console.error(error)
+      window.alert('No se pudo guardar el evento en Firestore.')
+    }
   })
 
   return (
@@ -143,6 +158,7 @@ export function CalendarPage() {
                 description: '',
                 date: format(selected, 'yyyy-MM-dd'),
                 time: '',
+                visibility: 'family',
               })
               setCreateOpen(true)
             }}
@@ -152,6 +168,9 @@ export function CalendarPage() {
           </Button>
         }
       />
+      <p className="mb-4 text-sm text-[var(--color-ink-muted)]">
+        En el calendario ves lo tuyo y solo lo de otros si lo marcaron como “Toda la familia”.
+      </p>
 
       <Card className="mb-6">
         <div className="mb-4 flex items-center justify-between">
@@ -255,6 +274,7 @@ export function CalendarPage() {
           <Field label="Descripción">
             <Textarea {...form.register('description')} />
           </Field>
+          <VisibilityField register={form.register} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
               {t('common.cancel')}

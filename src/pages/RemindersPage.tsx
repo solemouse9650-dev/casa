@@ -11,8 +11,9 @@ import { Modal } from '@/components/ui/Modal'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { useI18n } from '@/hooks/useI18n'
 import { useActor } from '@/hooks/useAuth'
-import { useDataStore } from '@/stores/dataStore'
+import { useVisibleData } from '@/hooks/useVisibleData'
 import { REMINDER_TYPES } from '@/constants'
+import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
 import { createReminder, deleteReminder, updateReminder } from '@/services/reminders'
 import type { TranslationKey } from '@/i18n/translations'
 
@@ -21,6 +22,7 @@ const schema = z.object({
   date: z.string().min(1),
   time: z.string().min(1),
   type: z.enum(['general', 'task', 'shopping', 'bill', 'other']),
+  visibility: z.enum(['family', 'private']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -28,17 +30,22 @@ type FormData = z.infer<typeof schema>
 export function RemindersPage() {
   const { t } = useI18n()
   const actor = useActor()
-  const reminders = useDataStore((s) => s.reminders)
+  const { reminders } = useVisibleData()
   const [open, setOpen] = useState(false)
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { message: '', date: '', time: '', type: 'general' },
+    defaultValues: { message: '', date: '', time: '', type: 'general', visibility: 'family' },
   })
 
   const onSubmit = form.handleSubmit(async (data) => {
-    await createReminder(data, actor)
-    setOpen(false)
-    form.reset({ message: '', date: '', time: '', type: 'general' })
+    try {
+      await createReminder(data, actor)
+      setOpen(false)
+      form.reset({ message: '', date: '', time: '', type: 'general', visibility: 'family' })
+    } catch (error) {
+      console.error(error)
+      window.alert('No se pudo guardar el recordatorio.')
+    }
   })
 
   return (
@@ -61,9 +68,12 @@ export function RemindersPage() {
             <Card key={r.id} className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-medium">{r.message}</p>
-                <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-                  {r.date} · {r.time} · {t(`reminderType.${r.type}` as TranslationKey)} ·{' '}
-                  {r.createdByName}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--color-ink-muted)]">
+                  <span>
+                    {r.date} · {r.time} · {t(`reminderType.${r.type}` as TranslationKey)} ·{' '}
+                    {r.createdByName}
+                  </span>
+                  <VisibilityBadge visibility={r.visibility} />
                 </p>
               </div>
               <div className="flex gap-2">
@@ -103,6 +113,7 @@ export function RemindersPage() {
               ))}
             </Select>
           </Field>
+          <VisibilityField register={form.register} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               {t('common.cancel')}
