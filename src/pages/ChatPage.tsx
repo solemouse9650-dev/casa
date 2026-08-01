@@ -196,6 +196,9 @@ export function ChatPage() {
             <Bell className="h-3.5 w-3.5" /> Notificaciones activas
           </p>
         )}
+        <p className="mt-2 text-[11px] leading-snug text-[var(--color-ink-muted)]">
+          Push al celular usa FCM HTTP v1 (cuenta de servicio en Vercel), no la API heredada.
+        </p>
       </div>
 
       <button

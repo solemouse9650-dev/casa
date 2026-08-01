@@ -29,16 +29,31 @@ Los usuarios se crean manualmente en Firebase Authentication. No hay registro p�
 ## Chat y notificaciones push
 
 - Chat **Familiar** (todos) o **privado** con cada persona.
-- Solo texto (sin audios ni imágenes).
+- Solo texto.
 - En el chat: botón **Activar notificaciones**.
 
-Para push al celular (con sesión iniciada):
+> La API heredada (`FCM_SERVER_KEY`) está **deshabilitada**. Usamos **FCM HTTP v1** con cuenta de servicio.
 
-1. Firebase Console → Project settings → Cloud Messaging → **Web Push certificates** → generar pares de claves → copiar la clave pública a `VITE_FIREBASE_VAPID_KEY` (Vercel + `.env`).
-2. En Vercel → Environment Variables → `FCM_SERVER_KEY` = Server key de Cloud Messaging (o Cloud Messaging API).
-3. Redeploy.
+### 1) Clave Web Push (VAPID)
+Firebase Console → ⚙️ Project settings → **Cloud Messaging** → **Web Push certificates** → Generate key pair  
+→ copiá la clave a Vercel / `.env` como:
 
-Aunque falte FCM, con la app abierta/en segundo plano el navegador puede mostrar notificaciones locales si diste permiso.
+`VITE_FIREBASE_VAPID_KEY=...`
+
+### 2) Cuenta de servicio (reemplaza FCM_SERVER_KEY)
+1. Firebase Console → ⚙️ Project settings → **Service accounts**
+2. **Generate new private key** → se descarga un `.json`
+3. Abrí el JSON, copiá **todo** el contenido
+4. En [jsonformatter.org](https://jsonformatter.org/) o similar, minificalo a **una sola línea**
+5. Vercel → Project → Settings → Environment Variables:
+   - Name: `FIREBASE_SERVICE_ACCOUNT`
+   - Value: el JSON en una línea
+   - Environments: Production (y Preview si querés)
+6. **Redeploy**
+
+Con eso las notificaciones usan la API actual (HTTP v1), no la heredada.
+
+Si todavía no configurás esto, igual funcionan alertas locales con la app abierta / en segundo plano (si diste permiso).
 
 ## Firebase (obligatorio para que guarde datos)
 
