@@ -16,35 +16,57 @@ export function useAuthListener() {
   const setLoading = useAuthStore((s) => s.setLoading)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let cancelled = false
+
+    // Evita quedar colgado en "Verificando sesión…"
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) setLoading(false)
+    }, 4000)
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (cancelled) return
+
       setUser(user)
-      if (user) {
+      setLoading(false)
+      window.clearTimeout(timeout)
+
+      if (!user) {
+        setProfile(null)
+        return
+      }
+
+      // Perfil/hogar en segundo plano: no bloquean el acceso al panel
+      void (async () => {
         try {
           const [profile] = await Promise.all([
             upsertUserProfile(user.uid, user.email ?? '', user.displayName),
             ensureHomeExists(),
           ])
-          setProfile(profile)
+          if (!cancelled) setProfile(profile)
         } catch {
-          setProfile({
-            uid: user.uid,
-            email: user.email ?? '',
-            displayName: user.email?.split('@')[0] ?? 'Usuario',
-            createdAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          })
+          if (!cancelled) {
+            setProfile({
+              uid: user.uid,
+              email: user.email ?? '',
+              displayName: user.email?.split('@')[0] ?? 'Usuario',
+              createdAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+            })
+          }
         }
-      } else {
-        setProfile(null)
-      }
-      setLoading(false)
+      })()
     })
-    return unsub
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+      unsub()
+    }
   }, [setUser, setProfile, setLoading])
 }
 
 export async function login(email: string, password: string) {
-  return signInWithEmailAndPassword(auth, email, password)
+  return signInWithEmailAndPassword(auth, email.trim(), password)
 }
 
 export async function logout() {
@@ -52,7 +74,7 @@ export async function logout() {
 }
 
 export async function resetPassword(email: string) {
-  return sendPasswordResetEmail(auth, email)
+  return sendPasswordResetEmail(auth, email.trim())
 }
 
 export function useAuth() {
@@ -68,5 +90,28 @@ export function useActor() {
   return {
     id: user?.uid ?? '',
     name: profile?.displayName || user?.email?.split('@')[0] || 'Usuario',
+  }
+}
+
+export function getAuthErrorMessage(error: unknown): string {
+  const code =
+    typeof error === 'object' && error && 'code' in error
+      ? String((error as { code: string }).code)
+      : ''
+
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+    case 'auth/invalid-email':
+      return 'Correo o contraseña incorrectos.'
+    case 'auth/too-many-requests':
+      return 'Demasiados intentos. Probá de nuevo en unos minutos.'
+    case 'auth/network-request-failed':
+      return 'Error de conexión. Revisá tu internet.'
+    case 'auth/user-disabled':
+      return 'Esta cuenta está deshabilitada.'
+    default:
+      return 'No pudimos iniciar sesión. Revisá correo y contraseña.'
   }
 }

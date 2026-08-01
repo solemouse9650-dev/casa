@@ -14,6 +14,6 @@ export function AuthGate() {
 export function PublicOnly() {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to="/inicio" replace />
   return <Outlet />
 }

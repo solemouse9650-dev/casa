@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { useAuthListener } from '@/hooks/useAuth'
+import { useAuthListener, useAuth } from '@/hooks/useAuth'
 import { AuthGate, PublicOnly } from '@/contexts/AuthGate'
+import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { AppShell } from '@/layouts/AppShell'
 import { LoginPage } from '@/pages/LoginPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
@@ -21,11 +22,20 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RootRedirect() {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (user) return <Navigate to="/inicio" replace />
+  return <Navigate to="/login" replace />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthBootstrap>
         <Routes>
+          <Route path="/" element={<RootRedirect />} />
+
           <Route element={<PublicOnly />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -33,7 +43,7 @@ export default function App() {
 
           <Route element={<AuthGate />}>
             <Route element={<AppShell />}>
-              <Route index element={<DashboardPage />} />
+              <Route path="inicio" element={<DashboardPage />} />
               <Route path="compras" element={<ShoppingPage />} />
               <Route path="tareas" element={<TasksPage />} />
               <Route path="calendario" element={<CalendarPage />} />
@@ -47,7 +57,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
       </AuthBootstrap>
     </BrowserRouter>

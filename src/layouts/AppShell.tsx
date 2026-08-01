@@ -76,7 +76,7 @@ export function AppShell() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/'}
+            end={item.to === '/inicio'}
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
@@ -200,7 +200,7 @@ export function AppShell() {
 
         <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)]/95 px-1 py-2 backdrop-blur lg:hidden">
           {[
-            { to: '/', icon: Home, label: t('nav.dashboard') },
+            { to: '/inicio', icon: Home, label: t('nav.dashboard') },
             { to: '/compras', icon: ShoppingCart, label: t('nav.shopping') },
             { to: '/tareas', icon: CheckSquare, label: t('nav.tasks') },
             { to: '/calendario', icon: Calendar, label: t('nav.calendar') },
@@ -209,7 +209,7 @@ export function AppShell() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
+              end={item.to === '/inicio'}
               onClick={() => {
                 if (item.to === '/configuracion') setSidebarOpen(true)
               }}
