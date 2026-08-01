@@ -26,19 +26,41 @@ npm run dev
 
 Los usuarios se crean manualmente en Firebase Authentication. No hay registro público.
 
-## Deploy
+## Firebase (obligatorio para que guarde datos)
+
+Si la app no guarda compras/tareas, casi seguro faltan las **reglas** o la base Firestore.
+
+### 1) Crear Firestore
+Firebase Console → proyecto `casa-a0dfc` → **Build → Firestore Database → Create database**  
+Modo: **Production** → ubicación cualquiera → Enable.
+
+### 2) Pegar reglas de Firestore
+Firestore → **Rules** → reemplazá todo por el contenido de `firestore.rules` → **Publish**.
+
+### 3) Storage (imágenes)
+**Build → Storage → Get started** → Rules → pegá `storage.rules` → **Publish**.
+
+### 4) Auth
+**Authentication → Sign-in method** → habilitar **Email/Password**.  
+**Settings → Authorized domains** → agregar `localhost`, tu dominio de Vercel (`casa-rrby.vercel.app`).
+
+### 5) Deploy CLI (opcional, con tu cuenta dueña del proyecto)
+```bash
+npx firebase login
+npx firebase use casa-a0dfc
+npx firebase deploy --only firestore:rules,storage
+```
+
+## Deploy web
 
 ```bash
 npm run build
-firebase login
-firebase use casa-a0dfc
-firebase deploy
+# Vercel redeploy, o:
+firebase deploy --only hosting
 ```
-
-Esto despliega Hosting (`dist/`), reglas de Firestore y reglas de Storage.
 
 ## Seguridad
 
-- `.env` está en `.gitignore` (no subir claves al repositorio).
-- Solo usuarios autenticados pueden leer/escribir datos.
+- `.env` está en `.gitignore`.
+- Solo usuarios autenticados pueden leer/escribir.
 - Persistencia de sesión con `browserLocalPersistence`.

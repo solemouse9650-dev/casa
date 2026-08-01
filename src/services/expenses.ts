@@ -8,9 +8,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { logActivity } from './activity'
+import { safeLogActivity } from './activity'
 import type { ExpenseItem, PaymentMethod } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { cleanData } from '@/utils/firestore'
 
 export type ExpenseInput = {
   amount: number
@@ -24,19 +25,32 @@ export type ExpenseInput = {
 
 export function subscribeExpenses(cb: (items: ExpenseItem[]) => void): Unsubscribe {
   const q = query(homeCol('expenses'), orderBy('date', 'desc'))
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ExpenseItem, 'id'>) })))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ExpenseItem, 'id'>) })))
+    },
+    (error) => console.error('[Casa] expenses snapshot error', error),
+  )
 }
 
 export async function createExpense(input: ExpenseInput, actor: { id: string; name: string }) {
-  const ref = await addDoc(homeCol('expenses'), {
-    ...input,
-    createdBy: actor.id,
-    createdByName: actor.name,
-    createdAt: nowIso(),
-  })
-  await logActivity({
+  const ref = await addDoc(
+    homeCol('expenses'),
+    cleanData({
+      amount: Number(input.amount) || 0,
+      category: input.category,
+      description: input.description.trim(),
+      date: input.date,
+      paidBy: input.paidBy,
+      paidByName: input.paidByName,
+      paymentMethod: input.paymentMethod,
+      createdBy: actor.id,
+      createdByName: actor.name,
+      createdAt: nowIso(),
+    }),
+  )
+  void safeLogActivity({
     actorId: actor.id,
     actorName: actor.name,
     action: 'create',
@@ -48,7 +62,7 @@ export async function createExpense(input: ExpenseInput, actor: { id: string; na
 }
 
 export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
-  await updateDoc(homeDoc('expenses', id), input)
+  await updateDoc(homeDoc('expenses', id), cleanData({ ...input }))
 }
 
 export async function deleteExpense(id: string) {

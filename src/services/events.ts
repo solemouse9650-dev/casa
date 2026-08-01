@@ -8,9 +8,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { logActivity } from './activity'
+import { safeLogActivity } from './activity'
 import type { CalendarEvent, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { cleanData } from '@/utils/firestore'
 
 export type EventInput = {
   title: string
@@ -44,15 +45,22 @@ export function subscribeEvents(cb: (items: CalendarEvent[]) => void): Unsubscri
 
 export async function createEvent(input: EventInput, actor: { id: string; name: string }) {
   const visibility = input.visibility === 'private' ? 'private' : 'family'
-  const ref = await addDoc(homeCol('events'), {
-    ...input,
-    visibility,
-    color: input.color ?? '#1b7a6e',
-    createdBy: actor.id,
-    createdByName: actor.name,
-    createdAt: nowIso(),
-  })
-  await logActivity({
+  const ref = await addDoc(
+    homeCol('events'),
+    cleanData({
+      title: input.title.trim(),
+      description: input.description,
+      date: input.date,
+      time: input.time,
+      endTime: input.endTime,
+      color: input.color ?? '#1b7a6e',
+      visibility,
+      createdBy: actor.id,
+      createdByName: actor.name,
+      createdAt: nowIso(),
+    }),
+  )
+  void safeLogActivity({
     actorId: actor.id,
     actorName: actor.name,
     action: 'create',
@@ -64,7 +72,7 @@ export async function createEvent(input: EventInput, actor: { id: string; name: 
 }
 
 export async function updateEvent(id: string, input: Partial<EventInput>) {
-  await updateDoc(homeDoc('events', id), input)
+  await updateDoc(homeDoc('events', id), cleanData({ ...input }))
 }
 
 export async function deleteEvent(id: string) {

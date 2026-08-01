@@ -15,6 +15,7 @@ import { useActor } from '@/hooks/useAuth'
 import { useVisibleData } from '@/hooks/useVisibleData'
 import { PRIORITIES, TASK_CATEGORIES, TASK_STATUSES } from '@/constants'
 import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
+import { getFirestoreErrorMessage } from '@/utils/firestore'
 import {
   completeTask,
   createTask,
@@ -145,7 +146,7 @@ export function TasksPage() {
       setOpen(false)
     } catch (error) {
       console.error(error)
-      window.alert('No se pudo guardar la tarea en Firestore.')
+      window.alert(getFirestoreErrorMessage(error))
     }
   })
 

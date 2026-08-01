@@ -8,10 +8,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { notifyAndLog } from './activity'
+import { notifyAndLog, safeLogActivity } from './activity'
 import type { Attachment, Priority, Recurrence, TaskItem, TaskStatus, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
-import { logActivity } from './activity'
+import { cleanData } from '@/utils/firestore'
 
 export type TaskInput = {
   title: string
@@ -52,21 +52,31 @@ export function subscribeTasks(cb: (items: TaskItem[]) => void): Unsubscribe {
 
 export async function createTask(input: TaskInput, actor: { id: string; name: string }) {
   const visibility = input.visibility === 'private' ? 'private' : 'family'
-  const payload = {
-    ...input,
-    visibility,
+  const payload = cleanData({
+    title: input.title.trim(),
+    description: input.description,
+    category: input.category,
+    priority: input.priority,
+    assigneeId: input.assigneeId,
+    assigneeName: input.assigneeName,
+    dueDate: input.dueDate,
+    dueTime: input.dueTime,
     status: input.status ?? 'pending',
+    notes: input.notes,
     attachments: input.attachments ?? [],
     recurrence: input.recurrence ?? 'none',
+    visibility,
     createdBy: actor.id,
     createdByName: actor.name,
     createdAt: nowIso(),
-  }
+  })
+
   const ref = await addDoc(homeCol('tasks'), payload)
   const assigneeText = input.assigneeName ? ` para ${input.assigneeName}` : ''
   const message = `${actor.name} creó la tarea "${input.title}"${assigneeText}.`
+
   if (visibility === 'family') {
-    await notifyAndLog({
+    void notifyAndLog({
       actorId: actor.id,
       actorName: actor.name,
       action: 'create',
@@ -76,7 +86,7 @@ export async function createTask(input: TaskInput, actor: { id: string; name: st
       notificationTitle: 'Nueva tarea',
     })
   } else {
-    await logActivity({
+    void safeLogActivity({
       actorId: actor.id,
       actorName: actor.name,
       action: 'create',
@@ -85,16 +95,17 @@ export async function createTask(input: TaskInput, actor: { id: string; name: st
       message,
     })
   }
+
   return ref.id
 }
 
 export async function updateTask(id: string, input: Partial<TaskInput>) {
-  await updateDoc(homeDoc('tasks', id), input)
+  await updateDoc(homeDoc('tasks', id), cleanData({ ...input }))
 }
 
 export async function deleteTask(id: string, actor: { id: string; name: string }, title: string) {
   await deleteDoc(homeDoc('tasks', id))
-  await notifyAndLog({
+  void notifyAndLog({
     actorId: actor.id,
     actorName: actor.name,
     action: 'delete',
@@ -125,13 +136,16 @@ export async function duplicateTask(item: TaskItem, actor: { id: string; name: s
 }
 
 export async function completeTask(item: TaskItem, actor: { id: string; name: string }) {
-  await updateDoc(homeDoc('tasks', item.id), {
-    status: 'done',
-    completedBy: actor.id,
-    completedByName: actor.name,
-    completedAt: nowIso(),
-  })
-  await notifyAndLog({
+  await updateDoc(
+    homeDoc('tasks', item.id),
+    cleanData({
+      status: 'done',
+      completedBy: actor.id,
+      completedByName: actor.name,
+      completedAt: nowIso(),
+    }),
+  )
+  void notifyAndLog({
     actorId: actor.id,
     actorName: actor.name,
     action: 'complete',

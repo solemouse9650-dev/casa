@@ -24,6 +24,7 @@ import { useActor } from '@/hooks/useAuth'
 import { useVisibleData } from '@/hooks/useVisibleData'
 import { PRIORITIES, SHOPPING_CATEGORIES, UNITS } from '@/constants'
 import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
+import { getFirestoreErrorMessage } from '@/utils/firestore'
 import {
   createShopping,
   deleteShopping,
@@ -158,7 +159,7 @@ export function ShoppingPage() {
       setOpen(false)
     } catch (error) {
       console.error(error)
-      window.alert('No se pudo guardar en la base de datos. Revisá la conexión o las reglas de Firestore.')
+      window.alert(getFirestoreErrorMessage(error))
     }
   })
 

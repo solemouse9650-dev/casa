@@ -8,10 +8,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { notifyAndLog } from './activity'
+import { notifyAndLog, safeLogActivity } from './activity'
 import type { Priority, ShoppingItem, ShoppingStatus, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
-import { logActivity } from './activity'
+import { cleanData } from '@/utils/firestore'
 
 export type ShoppingInput = {
   name: string
@@ -53,18 +53,29 @@ export async function createShopping(
   actor: { id: string; name: string },
 ) {
   const visibility = input.visibility === 'private' ? 'private' : 'family'
-  const payload = {
-    ...input,
+  const payload = cleanData({
+    name: input.name.trim(),
+    category: input.category,
+    quantity: Number(input.quantity) || 1,
+    unit: input.unit,
+    priority: input.priority,
+    notes: input.notes,
+    estimatedPrice: input.estimatedPrice,
+    finalPrice: input.finalPrice,
+    imageUrl: input.imageUrl,
+    scheduledFor: input.scheduledFor,
     visibility,
     status: input.status ?? 'pending',
     createdBy: actor.id,
     createdByName: actor.name,
     createdAt: nowIso(),
-  }
+  })
+
   const ref = await addDoc(homeCol('shopping'), payload)
   const message = `${actor.name} agregó ${input.name}.`
+
   if (visibility === 'family') {
-    await notifyAndLog({
+    void notifyAndLog({
       actorId: actor.id,
       actorName: actor.name,
       action: 'create',
@@ -74,7 +85,7 @@ export async function createShopping(
       notificationTitle: 'Compra agregada',
     })
   } else {
-    await logActivity({
+    void safeLogActivity({
       actorId: actor.id,
       actorName: actor.name,
       action: 'create',
@@ -83,16 +94,17 @@ export async function createShopping(
       message: `${actor.name} agregó una compra privada: ${input.name}.`,
     })
   }
+
   return ref.id
 }
 
 export async function updateShopping(id: string, input: Partial<ShoppingInput>) {
-  await updateDoc(homeDoc('shopping', id), input)
+  await updateDoc(homeDoc('shopping', id), cleanData({ ...input }))
 }
 
 export async function deleteShopping(id: string, actor: { id: string; name: string }, name: string) {
   await deleteDoc(homeDoc('shopping', id))
-  await notifyAndLog({
+  void notifyAndLog({
     actorId: actor.id,
     actorName: actor.name,
     action: 'delete',
@@ -126,14 +138,17 @@ export async function markPurchased(
   actor: { id: string; name: string },
   finalPrice?: number,
 ) {
-  await updateDoc(homeDoc('shopping', item.id), {
-    status: 'purchased',
-    purchasedBy: actor.id,
-    purchasedByName: actor.name,
-    purchasedAt: nowIso(),
-    ...(finalPrice != null ? { finalPrice } : {}),
-  })
-  await notifyAndLog({
+  await updateDoc(
+    homeDoc('shopping', item.id),
+    cleanData({
+      status: 'purchased',
+      purchasedBy: actor.id,
+      purchasedByName: actor.name,
+      purchasedAt: nowIso(),
+      finalPrice,
+    }),
+  )
+  void notifyAndLog({
     actorId: actor.id,
     actorName: actor.name,
     action: 'purchase',

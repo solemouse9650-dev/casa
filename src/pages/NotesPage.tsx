@@ -13,6 +13,7 @@ import { useActor } from '@/hooks/useAuth'
 import { useVisibleData } from '@/hooks/useVisibleData'
 import { NOTE_CATEGORIES, NOTE_COLORS } from '@/constants'
 import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
+import { getFirestoreErrorMessage } from '@/utils/firestore'
 import { createNote, deleteNote, updateNote } from '@/services/notes'
 import type { NoteItem } from '@/types'
 import { formatRelative } from '@/utils/dates'
@@ -75,7 +76,7 @@ export function NotesPage() {
       setOpen(false)
     } catch (error) {
       console.error(error)
-      window.alert('No se pudo guardar la nota en Firestore.')
+      window.alert(getFirestoreErrorMessage(error))
     }
   })
 

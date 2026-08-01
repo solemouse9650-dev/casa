@@ -8,9 +8,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { logActivity } from './activity'
+import { safeLogActivity } from './activity'
 import type { NoteItem, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { cleanData } from '@/utils/firestore'
 
 export type NoteInput = {
   title: string
@@ -43,15 +44,21 @@ export function subscribeNotes(cb: (items: NoteItem[]) => void): Unsubscribe {
 export async function createNote(input: NoteInput, actor: { id: string; name: string }) {
   const now = nowIso()
   const visibility = input.visibility === 'private' ? 'private' : 'family'
-  const ref = await addDoc(homeCol('notes'), {
-    ...input,
-    visibility,
-    createdBy: actor.id,
-    createdByName: actor.name,
-    createdAt: now,
-    updatedAt: now,
-  })
-  await logActivity({
+  const ref = await addDoc(
+    homeCol('notes'),
+    cleanData({
+      title: input.title.trim(),
+      content: input.content,
+      color: input.color,
+      category: input.category,
+      visibility,
+      createdBy: actor.id,
+      createdByName: actor.name,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  void safeLogActivity({
     actorId: actor.id,
     actorName: actor.name,
     action: 'create',
@@ -63,7 +70,7 @@ export async function createNote(input: NoteInput, actor: { id: string; name: st
 }
 
 export async function updateNote(id: string, input: Partial<NoteInput>) {
-  await updateDoc(homeDoc('notes', id), { ...input, updatedAt: nowIso() })
+  await updateDoc(homeDoc('notes', id), cleanData({ ...input, updatedAt: nowIso() }))
 }
 
 export async function deleteNote(id: string) {

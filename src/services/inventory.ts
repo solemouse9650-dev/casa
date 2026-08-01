@@ -8,10 +8,11 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { logActivity } from './activity'
+import { safeLogActivity } from './activity'
 import { createShopping } from './shopping'
 import type { InventoryItem } from '@/types'
 import { nowIso } from '@/utils/dates'
+import { cleanData } from '@/utils/firestore'
 
 export type InventoryInput = {
   name: string
@@ -24,21 +25,33 @@ export type InventoryInput = {
 
 export function subscribeInventory(cb: (items: InventoryItem[]) => void): Unsubscribe {
   const q = query(homeCol('inventory'), orderBy('name', 'asc'))
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<InventoryItem, 'id'>) })))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<InventoryItem, 'id'>) })))
+    },
+    (error) => console.error('[Casa] inventory snapshot error', error),
+  )
 }
 
 export async function createInventory(input: InventoryInput, actor: { id: string; name: string }) {
   const now = nowIso()
-  const ref = await addDoc(homeCol('inventory'), {
-    ...input,
-    createdBy: actor.id,
-    createdByName: actor.name,
-    createdAt: now,
-    updatedAt: now,
-  })
-  await logActivity({
+  const ref = await addDoc(
+    homeCol('inventory'),
+    cleanData({
+      name: input.name.trim(),
+      quantity: Number(input.quantity) || 0,
+      minQuantity: Number(input.minQuantity) || 0,
+      unit: input.unit,
+      category: input.category,
+      notes: input.notes,
+      createdBy: actor.id,
+      createdByName: actor.name,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  void safeLogActivity({
     actorId: actor.id,
     actorName: actor.name,
     action: 'create',
@@ -50,7 +63,7 @@ export async function createInventory(input: InventoryInput, actor: { id: string
 }
 
 export async function updateInventory(id: string, input: Partial<InventoryInput>) {
-  await updateDoc(homeDoc('inventory', id), { ...input, updatedAt: nowIso() })
+  await updateDoc(homeDoc('inventory', id), cleanData({ ...input, updatedAt: nowIso() }))
 }
 
 export async function deleteInventory(id: string) {
@@ -69,6 +82,7 @@ export async function addInventoryToShopping(
       unit: item.unit,
       priority: 'high',
       notes: `Desde inventario (stock: ${item.quantity} ${item.unit})`,
+      visibility: 'family',
     },
     actor,
   )

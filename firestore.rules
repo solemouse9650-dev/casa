@@ -5,17 +5,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Perfiles de familia
     match /users/{userId} {
       allow read: if signedIn();
       allow create, update: if signedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
 
+    // Hogar compartido + todas las subcolecciones
+    // (shopping, tasks, notes, events, reminders, inventory, expenses, activity, notifications, settings)
     match /homes/{homeId} {
       allow read, write: if signedIn();
 
-      match /{document=**} {
+      match /{subcollection}/{docId} {
         allow read, write: if signedIn();
+
+        match /{document=**} {
+          allow read, write: if signedIn();
+        }
       }
     }
   }

@@ -8,10 +8,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { homeCol, homeDoc } from './paths'
-import { notifyAndLog } from './activity'
+import { notifyAndLog, safeLogActivity } from './activity'
 import type { ReminderItem, ReminderStatus, ReminderType, Visibility } from '@/types'
 import { nowIso } from '@/utils/dates'
-import { logActivity } from './activity'
+import { cleanData } from '@/utils/firestore'
 
 export type ReminderInput = {
   message: string
@@ -44,17 +44,23 @@ export function subscribeReminders(cb: (items: ReminderItem[]) => void): Unsubsc
 
 export async function createReminder(input: ReminderInput, actor: { id: string; name: string }) {
   const visibility = input.visibility === 'private' ? 'private' : 'family'
-  const ref = await addDoc(homeCol('reminders'), {
-    ...input,
-    visibility,
-    status: input.status ?? 'pending',
-    createdBy: actor.id,
-    createdByName: actor.name,
-    createdAt: nowIso(),
-  })
+  const ref = await addDoc(
+    homeCol('reminders'),
+    cleanData({
+      message: input.message.trim(),
+      date: input.date,
+      time: input.time,
+      type: input.type,
+      visibility,
+      status: input.status ?? 'pending',
+      createdBy: actor.id,
+      createdByName: actor.name,
+      createdAt: nowIso(),
+    }),
+  )
   const message = `${actor.name} creó un recordatorio: ${input.message}`
   if (visibility === 'family') {
-    await notifyAndLog({
+    void notifyAndLog({
       actorId: actor.id,
       actorName: actor.name,
       action: 'create',
@@ -64,7 +70,7 @@ export async function createReminder(input: ReminderInput, actor: { id: string; 
       notificationTitle: 'Recordatorio',
     })
   } else {
-    await logActivity({
+    void safeLogActivity({
       actorId: actor.id,
       actorName: actor.name,
       action: 'create',
@@ -77,7 +83,7 @@ export async function createReminder(input: ReminderInput, actor: { id: string; 
 }
 
 export async function updateReminder(id: string, input: Partial<ReminderInput>) {
-  await updateDoc(homeDoc('reminders', id), input)
+  await updateDoc(homeDoc('reminders', id), cleanData({ ...input }))
 }
 
 export async function deleteReminder(id: string) {

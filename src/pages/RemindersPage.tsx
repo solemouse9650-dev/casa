@@ -14,6 +14,7 @@ import { useActor } from '@/hooks/useAuth'
 import { useVisibleData } from '@/hooks/useVisibleData'
 import { REMINDER_TYPES } from '@/constants'
 import { VisibilityBadge, VisibilityField } from '@/components/ui/VisibilityField'
+import { getFirestoreErrorMessage } from '@/utils/firestore'
 import { createReminder, deleteReminder, updateReminder } from '@/services/reminders'
 import type { TranslationKey } from '@/i18n/translations'
 
@@ -44,7 +45,7 @@ export function RemindersPage() {
       form.reset({ message: '', date: '', time: '', type: 'general', visibility: 'family' })
     } catch (error) {
       console.error(error)
-      window.alert('No se pudo guardar el recordatorio.')
+      window.alert(getFirestoreErrorMessage(error))
     }
   })
 

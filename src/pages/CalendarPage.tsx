@@ -27,6 +27,7 @@ import { useVisibleData } from '@/hooks/useVisibleData'
 import { createEvent } from '@/services/events'
 import { cn } from '@/utils/cn'
 import { VisibilityField } from '@/components/ui/VisibilityField'
+import { getFirestoreErrorMessage } from '@/utils/firestore'
 
 const schema = z.object({
   title: z.string().min(1),
@@ -142,7 +143,7 @@ export function CalendarPage() {
       setCreateOpen(false)
     } catch (error) {
       console.error(error)
-      window.alert('No se pudo guardar el evento en Firestore.')
+      window.alert(getFirestoreErrorMessage(error))
     }
   })
 
