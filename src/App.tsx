@@ -16,6 +16,7 @@ import { ExpensesPage } from '@/pages/ExpensesPage'
 import { StatsPage } from '@/pages/StatsPage'
 import { ActivityPage } from '@/pages/ActivityPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { ChatPage } from '@/pages/ChatPage'
 
 function AuthBootstrap({ children }: { children: React.ReactNode }) {
   useAuthListener()
@@ -44,6 +45,7 @@ export default function App() {
           <Route element={<AuthGate />}>
             <Route element={<AppShell />}>
               <Route path="inicio" element={<DashboardPage />} />
+              <Route path="chat" element={<ChatPage />} />
               <Route path="compras" element={<ShoppingPage />} />
               <Route path="tareas" element={<TasksPage />} />
               <Route path="calendario" element={<CalendarPage />} />

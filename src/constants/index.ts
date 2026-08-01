@@ -115,6 +115,7 @@ export const KNOWN_USERS: Record<string, string> = {
 
 export const NAV_ITEMS = [
   { to: '/inicio', labelKey: 'nav.dashboard', icon: 'Home' },
+  { to: '/chat', labelKey: 'nav.chat', icon: 'MessageCircle' },
   { to: '/compras', labelKey: 'nav.shopping', icon: 'ShoppingCart' },
   { to: '/tareas', labelKey: 'nav.tasks', icon: 'CheckSquare' },
   { to: '/calendario', labelKey: 'nav.calendar', icon: 'Calendar' },

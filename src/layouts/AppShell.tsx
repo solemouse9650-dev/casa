@@ -8,6 +8,7 @@ import {
   CheckSquare,
   Home,
   Menu,
+  MessageCircle,
   Package,
   Search,
   Settings,
@@ -31,6 +32,7 @@ import { cn } from '@/utils/cn'
 
 const icons = {
   Home,
+  MessageCircle,
   ShoppingCart,
   CheckSquare,
   Calendar,
@@ -187,12 +189,18 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8">
+        <main
+          className={cn(
+            'flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8',
+            location.pathname === '/chat' && 'overflow-hidden py-0 pb-20 lg:pb-0',
+          )}
+        >
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
+            className={location.pathname === '/chat' ? 'h-full' : undefined}
           >
             <Outlet />
           </motion.div>
@@ -201,9 +209,9 @@ export function AppShell() {
         <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)]/95 px-1 py-2 backdrop-blur lg:hidden">
           {[
             { to: '/inicio', icon: Home, label: t('nav.dashboard') },
+            { to: '/chat', icon: MessageCircle, label: t('nav.chat') },
             { to: '/compras', icon: ShoppingCart, label: t('nav.shopping') },
             { to: '/tareas', icon: CheckSquare, label: t('nav.tasks') },
-            { to: '/calendario', icon: Calendar, label: t('nav.calendar') },
             { to: '/configuracion', icon: Menu, label: 'Más' },
           ].map((item) => (
             <NavLink

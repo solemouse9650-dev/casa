@@ -139,6 +139,22 @@ export interface ExpenseItem {
   createdAt: string
 }
 
+export type ChatMessageType = 'text' | 'audio'
+
+export interface ChatMessage {
+  id: string
+  type: ChatMessageType
+  text?: string
+  audioUrl?: string
+  audioDuration?: number
+  createdBy: string
+  createdByName: string
+  createdAt: string
+  updatedAt?: string
+  edited?: boolean
+  deleted?: boolean
+}
+
 export type EntityType =
   | 'shopping'
   | 'task'
@@ -147,6 +163,7 @@ export type EntityType =
   | 'note'
   | 'inventory'
   | 'expense'
+  | 'chat'
 
 export interface ActivityItem {
   id: string
